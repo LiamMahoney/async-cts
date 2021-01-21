@@ -1,5 +1,6 @@
 import asyncio
 import asyncpg
+import configparser
 from functools import wraps
 
 def handle_db_connection(func):
@@ -12,12 +13,19 @@ def handle_db_connection(func):
     """
     @wraps(func)
     async def inner(self, *args, **kwargs):
-        conn = await asyncpg.connect(user=self.username, password=self.password, database=self.database, host=self.host)
+        # making connection to database with information provided in config
+        conn = await asyncpg.connect(
+            user=self.config['database']['username'], 
+            password=self.config['database']['password'], 
+            database=self.config['database']['database'], 
+            host=self.config['database']['host']
+        )
         try:
-            query_results = await func(self, conn, *args, **kwargs)
+            #
+            execution_results = await func(self, conn, *args, **kwargs)
         finally:
             await conn.close()
-        return query_results
+        return execution_results
     return inner
 
 class DB():
@@ -25,14 +33,13 @@ class DB():
     Class that handles interacting with the data base to look for existing
     searches or results, add new searches or results and modify the data tables
     to keep their state in sync with what is needed for the application.
+
+    TODO: add methods for initial setup of database
     """
 
-    def __init__(self, username, password, database, host):
-        #TODO: read these from config file, remove from constructor
-        self.username = username
-        self.password = password
-        self.database = database
-        self.host = host
+    def __init__(self):
+        self.config = configparser.ConfigParser()
+        self.config.read('./app.config')
 
     @handle_db_connection
     async def search_for_active_search(self, conn, artifact_type, artifact_value):
@@ -44,8 +51,8 @@ class DB():
         :param string artifact_type: the type of the artifact
         :param string artifact_value: value of the artifact
         """
-        # TODO: read CTS id out of config and replace test_cts in query below with it
-        row = await conn.fetch(f"SELECT * FROM test_cts_active_searches WHERE artifact_type = '{artifact_type}' AND artifact_value = '{artifact_value}';")
+
+        row = await conn.fetch(f"SELECT * FROM {self.config['cts']['id']}_active_searches WHERE artifact_type = '{artifact_type}' AND artifact_value = '{artifact_value}';")
 
         return row
 
@@ -71,13 +78,12 @@ class DB():
 
         results = None
 
-        # TODO: read CTS id out of config and replace test_cts in query below with it
         if (search_id):
             # search_id supplied, retrieve results with it
             results = await conn.fetch(f"SELECT * FROM test_cts_results WHERE search_id = '{search_id}';")
         else:
             # artifact type / value supllied, retrieve results wtih it
-            results = await conn.fetch(f"SELECT * FROM test_cts_results WHERE artifact_type = '{artifact_type}' AND artifact_value = '{artifact_value}';")
+            results = await conn.fetch(f"SELECT * FROM {self.config['cts']['id']}_results WHERE artifact_type = '{artifact_type}' AND artifact_value = '{artifact_value}';")
 
         return results
 
@@ -92,8 +98,8 @@ class DB():
         active_searches table
         """
 
-        results = await conn.execute("""
-            DELETE FROM test_cts_active_searches
+        results = await conn.execute(f"""
+            DELETE FROM {self.config['cts']['id']}_active_searches
             WHERE search_id = $1
         """, search_id)
 
@@ -113,10 +119,10 @@ class DB():
         searched
         
         """
-        #TODO: get cts table name from config
-        results = await conn.execute("""
-            INSERT INTO test_cts_active_searches (id, search_id, artifact_type, artifact_value)
-            VALUES (2, $1, $2, $3);
+        #TODO: handle ID better, either here or in the database design
+        results = await conn.execute(f"""
+            INSERT INTO {self.config['cts']['id']}_active_searches (id, search_id, artifact_type, artifact_value)
+            VALUES (3, $1, $2, $3);
         """, str(search_id), artifact_type, artifact_value)
 
         return results
