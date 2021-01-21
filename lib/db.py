@@ -1,6 +1,7 @@
 import asyncio
 import asyncpg
 import configparser
+import os
 from functools import wraps
 
 def handle_db_connection(func):
@@ -39,7 +40,7 @@ class DB():
 
     def __init__(self):
         self.config = configparser.ConfigParser()
-        self.config.read('./app.config')
+        self.config.read(os.environ.get('ASYNC_CTS_CONFIG_PATH'))
 
     @handle_db_connection
     async def search_for_active_search(self, conn, artifact_type, artifact_value):

@@ -10,8 +10,7 @@ class AsyncCTS():
     def __init__(self, searcher):
         self.searcher = searcher
         self.config = configparser.ConfigParser()
-        # TODO: get config file path from environment variable
-        self.config.read('./app.config')
+        self.config.read(os.environ.get('ASYNC_CTS_CONFIG_PATH'))
 
     async def getServer(self):
         app = web.Application()
