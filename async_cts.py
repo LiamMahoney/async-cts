@@ -1,17 +1,17 @@
-import asyncio, tempfile, os
+import asyncio
+import tempfile
+import os
+import configparser
 from aiohttp import web, MultipartReader
+
 
 class AsyncCTS():
     
     def __init__(self, searcher):
-        # TODO: THESE SHOULD BE READ IN FROM CONFIG FILE
-        self.username = "userame"
-        self.password = "password"
-        self.database = "test"
-        self.host = "0.0.0.0"
-        ################################################
-
         self.searcher = searcher
+        self.config = configparser.ConfigParser()
+        # TODO: get config file path from environment variable
+        self.config.read('./app.config')
 
     async def getServer(self):
         app = web.Application()
@@ -124,6 +124,7 @@ class AsyncCTS():
             file_object.write(chunk)
             file_object.flush()
 
+        #TODO: is Content-Transfer-Encoding header actually needed?
         file_payload = {
             "path": file_object.name,
             "Content-Transfer-Encoding": file_part.headers.get("Content-Transfer-Encoding")
@@ -138,4 +139,4 @@ class AsyncCTS():
         :returns boolean True if file uploads are suppored, False if they are
         not
         """
-        raise Exception("NOT IMPLEMENTED YET")
+        return self.config['cts'].getboolean('upload_files')
