@@ -6,6 +6,9 @@ from aiohttp import web, MultipartReader
 
 
 class AsyncCTS():
+    """
+    TODO: docstring
+    """
     
     def __init__(self, searcher):
         self.searcher = searcher
@@ -13,6 +16,9 @@ class AsyncCTS():
         self.config.read(os.environ.get('ASYNC_CTS_CONFIG_PATH'))
 
     async def getServer(self):
+        """
+        TODO: docstring
+        """
         app = web.Application()
 
         app.add_routes([
@@ -24,10 +30,16 @@ class AsyncCTS():
         return app
 
     async def retrieveArtifactResultHandler(self, request):
+        """
+        TODO: docstring
+        """
         id = request.match_info.get('id', 'Anonymous')
         return web.Response(text=f'Recieved retrieveArtifactResultHandler request with id {id}')
 
     async def scanArtifactHandler(self, request):
+        """
+        TODO: docstring
+        """
         
         # will always be set - type / value combination of the artifact
         artifact_payload = None
@@ -57,7 +69,9 @@ class AsyncCTS():
         return web.json_response(resp)
 
     async def queryCapabilitiesHandler(self, request):
-        # TODO: read config to determine if file uploads are enabled
+        """
+        TODO: docstring
+        """
         supported = await self.file_uploads_supported()
         return web.Response(text=f'Recieved queryCapabilitiesHandler request')
 
