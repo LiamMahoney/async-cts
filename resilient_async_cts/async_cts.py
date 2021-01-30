@@ -2,8 +2,10 @@ import asyncio
 import tempfile
 import os
 import configparser
+import uuid
+import json
 from aiohttp import web, MultipartReader
-
+from .util.db import DB
 
 class AsyncCTS():
     """
@@ -54,19 +56,51 @@ class AsyncCTS():
             # file artifact sent w/ file
             artifact_payload, file_payload = await self.parse_multi_part_CTS_request(request)
             
-        #TODO: search data base for given type / value combination before submitting new search
+        db = DB()
 
-        resp = await self.searcher(
-                artifact_payload.get('type'), 
-                artifact_payload.get('value'),
-                file_payload=file_payload if file_payload else None
-            )
+        # searching for the type / value combination in both the active 
+        # searches and search results dbs
+        past_results, active_searches = await asyncio.gather(
+            db.search_for_results(artifact_type=artifact_payload.get('type'), artifact_value=artifact_payload.get('value')),
+            db.search_for_active_search(artifact_type=artifact_payload.get('type'), artifact_value=artifact_payload.get('value'))
+        )
 
+        if (len(past_results) == 0 and len(active_searches) == 0):
+            # no current searches or past searches with the given type / value
+            # launching a new search on the type / value
+            resp = asyncio.create_task(
+                    self.searcher(
+                        artifact_payload.get('type'), 
+                        artifact_payload.get('value'),
+                        file_payload=file_payload if file_payload else None
+                    )
+                )
+
+            # the ID for the new search
+            search_id = uuid.uuid4()
+
+            # when the search is done store it in the results table & remove 
+            # the entry in the active searches table
+            # TODO: need to remove the active search entry, id needs to get past into callback
+            resp.add_done_callback(lambda future: search_complete_handler(future, search_id, artifact_payload.get("type"), artifact_payload.get("value"), file_payload, db))
+
+            # adding an entry to the active searches db
+            await db.add_active_search(search_id, artifact_payload.get('type'), artifact_payload.get('value'))
+
+            return web.Response(text=f"LAUNCHING SEARCH SMELL U L8R")
+
+        elif (len(active_searches) == 1):
+            #TODO: must allow multiple 'active' searches with the same type / value to use the same ID
+            return web.Response(text=f"active search {active_searches[0].get('search_id')}")
+
+        elif(len(past_results) == 1):
+            # returning hit that was stored in db
+            return web.json_response(json.loads(past_results[0].get("hit")))
+
+        #TODO: this may need to be moved into the callback..
         if (file_payload):
             # deleting temp file from server
             os.unlink(file_payload.get('path'))
-
-        return web.json_response(resp)
 
     async def queryCapabilitiesHandler(self, request):
         """
@@ -153,3 +187,27 @@ class AsyncCTS():
         not
         """
         return self.config['cts'].getboolean('upload_files')
+
+def search_complete_handler(future, search_id, artifact_type, artifact_value, file_payload, db):
+    """
+    Removes the search ID from the active searches DB and adds the results to
+    the search results DB. If a file_payload is passed in then the temporary 
+    file is removed from the server.
+
+    :param future future: the results of the search (future object)
+    :param string search_id: the active search ID to be removed
+    TODO:
+    :param dict file_payload: contains information about the file if one was
+    sent from Resilient
+    :param DB db: object that has methods to interact with the database
+    """
+    #TODO: need to make sure these are logged somewhere
+    #TODO: this is not working
+    asyncio.gather(
+        db.remove_active_search(search_id),
+        db.store_search_results(search_id, artifact_type, artifact_value, json.dumps(future.result()))
+    )
+
+    if (file_payload):
+        # deleting temp file from server
+        os.unlink(file_payload.get('path'))

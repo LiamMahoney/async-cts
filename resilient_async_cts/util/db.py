@@ -58,6 +58,24 @@ class DB():
         return row
 
     @handle_db_connection
+    async def store_search_results(self, conn, search_id, artifact_type, artifact_value, hit):
+        """
+        Stores the results of a search in the results db. 
+
+        :param asyncpg.connection.Connection conn: connection to the database
+        :param string search_id: the ID of the search
+        :param string artifact_type: the type of the artifact
+        :param string artifact_value: value of the artifact
+        """
+        #TODO: test this
+        results = await conn.execute(f"""
+            INSERT INTO {self.config['cts']['id']}_results (id, search_id, artifact_type, artifact_value, hit)
+            VALUES (21, $1, $2, $3, $4);
+        """, search_id, artifact_type, artifact_value, hit)
+
+        return results
+
+    @handle_db_connection
     async def search_for_results(self, conn, search_id=None, artifact_type=None, artifact_value=None):
         """
         Returns any results for the given artifact type / value combination or
@@ -66,6 +84,7 @@ class DB():
         search_id.
 
         :param asyncpg.connection.Connection conn: connection to the database
+        :param string search_id: the ID of the search
         :param string artifact_type: the type of the artifact, if supplied
         artifact_value must also be supplied
         :param string artifact_value: value of the artifact, if supplied 
@@ -81,7 +100,7 @@ class DB():
 
         if (search_id):
             # search_id supplied, retrieve results with it
-            results = await conn.fetch(f"SELECT * FROM test_cts_results WHERE search_id = '{search_id}';")
+            results = await conn.fetch(f"SELECT * FROM {self.config['cts']['id']}_results WHERE search_id = '{search_id}';")
         else:
             # artifact type / value supllied, retrieve results wtih it
             results = await conn.fetch(f"SELECT * FROM {self.config['cts']['id']}_results WHERE artifact_type = '{artifact_type}' AND artifact_value = '{artifact_value}';")
@@ -123,7 +142,7 @@ class DB():
         #TODO: handle ID better, either here or in the database design
         results = await conn.execute(f"""
             INSERT INTO {self.config['cts']['id']}_active_searches (id, search_id, artifact_type, artifact_value)
-            VALUES (3, $1, $2, $3);
+            VALUES (6, $1, $2, $3);
         """, str(search_id), artifact_type, artifact_value)
 
         return results
