@@ -77,7 +77,7 @@ class AsyncCTS():
                 )
 
             # the ID for the new search
-            search_id = uuid.uuid4()
+            search_id = str(uuid.uuid4())
 
             # when the search is done store it in the results table & remove 
             # the entry in the active searches table
@@ -196,17 +196,18 @@ def search_complete_handler(future, search_id, artifact_type, artifact_value, fi
 
     :param future future: the results of the search (future object)
     :param string search_id: the active search ID to be removed
-    TODO:
+    :param string artifact_type: the type of the artifact
+    :param string artifact_value: the value of the artifact
     :param dict file_payload: contains information about the file if one was
     sent from Resilient
     :param DB db: object that has methods to interact with the database
     """
     #TODO: need to make sure these are logged somewhere
-    #TODO: this is not working
-    asyncio.gather(
-        db.remove_active_search(search_id),
-        db.store_search_results(search_id, artifact_type, artifact_value, json.dumps(future.result()))
-    )
+
+    # schedule a task to remove the search from the active search data table 
+    # and store the search results in the results table
+    asyncio.create_task(db.remove_active_search(search_id))
+    asyncio.create_task(db.store_search_results(search_id, artifact_type, artifact_value, json.dumps(future.result())))
 
     if (file_payload):
         # deleting temp file from server
