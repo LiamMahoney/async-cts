@@ -40,7 +40,14 @@ class AsyncCTS():
 
     async def scanArtifactHandler(self, request):
         """
-        TODO: docstring
+        Recieves the artifact from Resilient request. Checks if there are any
+        active searches with the given type / value combination. If an active
+        search is found then that search ID is returned. If there isn't then 
+        checks the results table for the type / value combination. If a result
+        is found then the hit of that result is returned. If neither are found
+        a new search is kicked off.
+
+        :returns web response that contains a ResponseDTO object
         """
         
         # will always be set - type / value combination of the artifact
