@@ -66,7 +66,7 @@ class AsyncCTS():
         )
 
         if (len(past_results) == 0 and len(active_searches) == 0):
-            # no current searches or past searches with the given type / value
+            # no current searches or search results with the given type / value
             # launching a new search on the type / value
             resp = asyncio.create_task(
                     self.searcher(
@@ -81,26 +81,36 @@ class AsyncCTS():
 
             # when the search is done store it in the results table & remove 
             # the entry in the active searches table
-            # TODO: need to remove the active search entry, id needs to get past into callback
             resp.add_done_callback(lambda future: search_complete_handler(future, search_id, artifact_payload.get("type"), artifact_payload.get("value"), file_payload, db))
 
             # adding an entry to the active searches db
             await db.add_active_search(search_id, artifact_payload.get('type'), artifact_payload.get('value'))
 
-            return web.Response(text=f"LAUNCHING SEARCH SMELL U L8R")
+            return web.json_response(
+                {
+                    'id': search_id,
+                    'retry_secs': self.config['cts']['retry_secs']
+                }
+            )
 
         elif (len(active_searches) == 1):
-            #TODO: must allow multiple 'active' searches with the same type / value to use the same ID
-            return web.Response(text=f"active search {active_searches[0].get('search_id')}")
+            # active search running for the given type / value combo, return
+            # that search's ID
+            return web.json_response(
+                {
+                    'id': active_searches[0].get('search_id'),
+                    'retry_secs': self.config['cts']['retry_secs']
+                }
+            )
 
         elif(len(past_results) == 1):
             # returning hit that was stored in db
-            return web.json_response(json.loads(past_results[0].get("hit")))
-
-        #TODO: this may need to be moved into the callback..
-        if (file_payload):
-            # deleting temp file from server
-            os.unlink(file_payload.get('path'))
+            return web.json_response(
+                {
+                    'id': past_results[0].get('search_id'),
+                    'hits': json.loads(past_results[0].get('hit'))
+                }
+            )
 
     async def queryCapabilitiesHandler(self, request):
         """
