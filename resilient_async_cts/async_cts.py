@@ -33,9 +33,65 @@ class AsyncCTS():
 
     async def retrieveArtifactResultHandler(self, request):
         """
-        TODO: docstring
+        Checks if the search ID sent from Resilient is still in the active
+        searches table. If it is assumed the search is still running. If it is
+        not then it is assumed the search is done, and the results are
+        retrieved and returned to Resilient.
+
+        :returns web response that contains a ResponseDTO
         """
-        id = request.match_info.get('id', 'Anonymous')
+        id = request.match_info.get('id')
+
+        db = DB()
+
+        # determining if the search is still running or if the search has 
+        # completed and it's results are stored
+        if (len(await db.search_for_active_search(search_id=id)) > 0):
+            # entry for ID in active searches, search is still running
+            return web.json_response(
+                {
+                    'id': id,
+                    'retry_secs': self.config['cts']['retry_secs']
+                }
+            )
+        else:
+            # no entry for ID in active searches, search must be done
+            results = await db.search_for_results(search_id=id)
+
+            if (len(results) > 0):
+                
+                latest_index = None
+                latest_time = None
+
+                for i, row in enumerate(results):
+                    # should only be one row per search_id, but just incase
+                    # return the newest row
+                    if (latest_time):
+                        # a row has already been iterated over, check if
+                        # current row is more current
+                        if (latest_time < row.get('date_found')):
+                            latest_index = i
+                            latest_time = row.get('date_found')
+                    else:
+                        # first row iterated over
+                        latest_index = i
+                        latest_time = row.get('date_found')
+
+                if (i > 0):
+                    # TODO: log this
+                    print(f"THERE WERE MUTLIPLE SEARCH RESULTS STORED WITH ID {id}")
+
+                return web.json_response(
+                    {
+                        'id': id,
+                        'hits': json.loads(results[i].get('hit'))
+                    }
+                )
+
+            else:
+                #TODO: either log here or catch where called
+                raise Exception(f"No active search or results for search {id}")
+    
         return web.Response(text=f'Recieved retrieveArtifactResultHandler request with id {id}')
 
     async def scanArtifactHandler(self, request):
@@ -118,6 +174,8 @@ class AsyncCTS():
                     'hits': json.loads(past_results[0].get('hit'))
                 }
             )
+
+        return web.Response(text=f"THIS SHOULD NEVER HAVE HAPPENED")
 
     async def queryCapabilitiesHandler(self, request):
         """
@@ -223,6 +281,7 @@ def search_complete_handler(future, search_id, artifact_type, artifact_value, fi
 
     # schedule a task to remove the search from the active search data table 
     # and store the search results in the results table
+    #TODO: this may introduce a race case where the search ID is removed from teh active search table before the results are stored.. need to make sure the results are stored before removing the active search
     asyncio.create_task(db.remove_active_search(search_id))
     asyncio.create_task(db.store_search_results(search_id, artifact_type, artifact_value, json.dumps(future.result())))
 
