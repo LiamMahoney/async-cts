@@ -2,6 +2,7 @@ import asyncio
 import asyncpg
 import configparser
 import os
+import datetime
 from functools import wraps
 
 def handle_db_connection(func):
@@ -10,7 +11,6 @@ def handle_db_connection(func):
     using the decorator and then closes the connection.
     NOTE: must be called from an instance of DB, or any class that has database
     information stored in the proper variables.
-    TODO: move to separate file? maybe..
     """
     @wraps(func)
     async def inner(self, *args, **kwargs):
@@ -43,17 +43,33 @@ class DB():
         self.config.read(os.environ.get('ASYNC_CTS_CONFIG_PATH'))
 
     @handle_db_connection
-    async def search_for_active_search(self, conn, artifact_type, artifact_value):
+    async def search_for_active_search(self, conn, search_id=None, artifact_type=None, artifact_value=None):
         """
-        Determines if the CTS is already looking up the given artifact type and value
-        combination. If it is, then no need to launch a new search on the combination.
+        Searches for an active search based on a search ID or an artifact type
+        and value combination.
+        NOTE: either artifact_type and artifact_value are required or just
+        search_id.
 
         :param asyncpg.connection.Connection conn: connection to the database
-        :param string artifact_type: the type of the artifact
-        :param string artifact_value: value of the artifact
+        :param string search_id: the ID of the search
+        :param string artifact_type: the type of the artifact, if supplied
+        artifact_value must also be supplied
+        :param string artifact_value: value of the artifact, if supplied 
+        artifact_type must also be supplied
         """
 
-        row = await conn.fetch(f"SELECT * FROM {self.config['cts']['id']}_active_searches WHERE artifact_type = '{artifact_type}' AND artifact_value = '{artifact_value}';")
+        if (not search_id and (not artifact_type or not artifact_value)):
+            # no parameters provided
+            raise Exception("search_id or artifact_typea and artifact_value are required parameters")
+
+        row = None
+
+        if (search_id):
+            # searching for a search_id
+            row = await conn.fetch(f"SELECT * FROM {self.config['cts']['id']}_active_searches WHERE search_id = '{search_id}';")
+        else:
+            # searching for type / value combination
+            row = await conn.fetch(f"SELECT * FROM {self.config['cts']['id']}_active_searches WHERE artifact_type = '{artifact_type}' AND artifact_value = '{artifact_value}';")
 
         return row
 
@@ -67,11 +83,12 @@ class DB():
         :param string artifact_type: the type of the artifact
         :param string artifact_value: value of the artifact
         """
-        #TODO: test this
+        #TODO: get this to return the id, should use the auto incremented ID instead of generating a UUID IMO
+        # look into fetchval instead of exectute https://magicstack.github.io/asyncpg/current/api/index.html?highlight=returning#asyncpg.connection.Connection.fetchval
         results = await conn.execute(f"""
-            INSERT INTO {self.config['cts']['id']}_results (id, search_id, artifact_type, artifact_value, hit)
-            VALUES (21, $1, $2, $3, $4);
-        """, search_id, artifact_type, artifact_value, hit)
+            INSERT INTO {self.config['cts']['id']}_results (id, search_id, artifact_type, artifact_value, hit, date_found)
+            VALUES (30, $1, $2, $3, $4, $5);
+        """, search_id, artifact_type, artifact_value, hit, datetime.datetime.now())
 
         return results
 
@@ -142,7 +159,7 @@ class DB():
         #TODO: handle ID better, either here or in the database design
         results = await conn.execute(f"""
             INSERT INTO {self.config['cts']['id']}_active_searches (id, search_id, artifact_type, artifact_value)
-            VALUES (6, $1, $2, $3);
+            VALUES (12, $1, $2, $3);
         """, str(search_id), artifact_type, artifact_value)
 
         return results
