@@ -79,15 +79,14 @@ class DB():
         Stores the results of a search in the results db. 
 
         :param asyncpg.connection.Connection conn: connection to the database
-        :param string search_id: the ID of the search
+        :param int search_id: the ID of the search
         :param string artifact_type: the type of the artifact
         :param string artifact_value: value of the artifact
         """
-        #TODO: get this to return the id, should use the auto incremented ID instead of generating a UUID IMO
-        # look into fetchval instead of exectute https://magicstack.github.io/asyncpg/current/api/index.html?highlight=returning#asyncpg.connection.Connection.fetchval
-        results = await conn.execute(f"""
-            INSERT INTO {self.config['cts']['id']}_results (id, search_id, artifact_type, artifact_value, hit, date_found)
-            VALUES (30, $1, $2, $3, $4, $5);
+
+        results = await conn.fetchval(f"""
+            INSERT INTO {self.config['cts']['id']}_results (search_id, artifact_type, artifact_value, hit, date_found)
+            VALUES ($1, $2, $3, $4, $5) RETURNING search_id;
         """, search_id, artifact_type, artifact_value, hit, datetime.datetime.now())
 
         return results
@@ -143,23 +142,23 @@ class DB():
         return results
     
     @handle_db_connection
-    async def add_active_search(self, conn, search_id, artifact_type, artifact_value):
+    async def add_active_search(self, conn, artifact_type, artifact_value):
         """
         Adds an entry to the 'active_searches' table. Should be called when a
         new search is started.
 
         :param asyncpg.connection.Connection conn: connection to the database
-        :param string search_id: the search_id of the new search
         :param string artifact_type: the type of the artifact that is being 
         searched
         :param string artifact_value: the value of the artifact that is being
         searched
         
+        :returns int the ID of the active search - auto incremented primary
+        key
         """
-        #TODO: handle ID better, either here or in the database design
-        results = await conn.execute(f"""
-            INSERT INTO {self.config['cts']['id']}_active_searches (id, search_id, artifact_type, artifact_value)
-            VALUES (12, $1, $2, $3);
-        """, str(search_id), artifact_type, artifact_value)
+        results = await conn.fetchval(f"""
+            INSERT INTO {self.config['cts']['id']}_active_searches (artifact_type, artifact_value)
+            VALUES ($1, $2) RETURNING search_id;
+        """, artifact_type, artifact_value)
 
         return results

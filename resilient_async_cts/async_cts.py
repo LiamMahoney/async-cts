@@ -139,15 +139,12 @@ class AsyncCTS():
                     )
                 )
 
-            # the ID for the new search
-            search_id = str(uuid.uuid4())
+            # adding an entry to the active searches db
+            search_id = await db.add_active_search(artifact_payload.get('type'), artifact_payload.get('value'))
 
             # when the search is done store it in the results table & remove 
             # the entry in the active searches table
             resp.add_done_callback(lambda future: search_complete_handler(future, search_id, artifact_payload.get("type"), artifact_payload.get("value"), file_payload, db))
-
-            # adding an entry to the active searches db
-            await db.add_active_search(search_id, artifact_payload.get('type'), artifact_payload.get('value'))
 
             return web.json_response(
                 {
@@ -175,6 +172,7 @@ class AsyncCTS():
                 }
             )
 
+        #TODO: log & exception
         return web.Response(text=f"THIS SHOULD NEVER HAVE HAPPENED")
 
     async def queryCapabilitiesHandler(self, request):
@@ -277,14 +275,28 @@ def search_complete_handler(future, search_id, artifact_type, artifact_value, fi
     sent from Resilient
     :param DB db: object that has methods to interact with the database
     """
-    #TODO: need to make sure these are logged somewhere
-
     # schedule a task to remove the search from the active search data table 
     # and store the search results in the results table
-    #TODO: this may introduce a race case where the search ID is removed from teh active search table before the results are stored.. need to make sure the results are stored before removing the active search
-    asyncio.create_task(db.remove_active_search(search_id))
-    asyncio.create_task(db.store_search_results(search_id, artifact_type, artifact_value, json.dumps(future.result())))
-
+    asyncio.create_task(search_complete_handler_helper(search_id, artifact_type, artifact_type, db, future.result()))
+    
     if (file_payload):
         # deleting temp file from server
         os.unlink(file_payload.get('path'))
+
+async def search_complete_handler_helper(search_id, artifact_type, artifact_value, db, hit):
+    """
+    Stores the search results and of the search and then removes the search 
+    from the active_searches table. Need to store the results first before
+    removing the active search to eliminate a potential race case.
+
+    :param string search_id: the active search ID to be removed
+    :param string artifact_type: the type of the artifact
+    :param string artifact_value: the value of the artifact
+    :param DB db: object that has methods to interact with the database 
+    :param HitDTO hit: the results of the search
+    """
+    #TODO: need to make sure these are logged somewhere
+    
+    await db.store_search_results(search_id, artifact_type, artifact_value, json.dumps(hit))
+
+    await db.remove_active_search(search_id)
