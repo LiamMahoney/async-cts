@@ -82,8 +82,10 @@ class DB():
         :param int search_id: the ID of the search
         :param string artifact_type: the type of the artifact
         :param string artifact_value: value of the artifact
+        :returns int the search_id associated to the results
         """
 
+        # returning search_id
         results = await conn.fetchval(f"""
             INSERT INTO {self.config['cts']['id']}_results (search_id, artifact_type, artifact_value, hit, date_found)
             VALUES ($1, $2, $3, $4, $5) RETURNING search_id;
@@ -156,9 +158,9 @@ class DB():
         :returns int the ID of the active search - auto incremented primary
         key
         """
-        results = await conn.fetchval(f"""
+        search_id = await conn.fetchval(f"""
             INSERT INTO {self.config['cts']['id']}_active_searches (artifact_type, artifact_value)
             VALUES ($1, $2) RETURNING search_id;
         """, artifact_type, artifact_value)
 
-        return results
+        return search_id
