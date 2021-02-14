@@ -279,13 +279,23 @@ def search_complete_handler(future, search_id, artifact_type, artifact_value, fi
     sent from Resilient
     :param DB db: object that has methods to interact with the database
     """
-    # schedule a task to remove the search from the active search data table 
-    # and store the search results in the results table
-    asyncio.create_task(search_complete_handler_helper(search_id, artifact_type, artifact_value, db, future.result()))
-    
+
     if (file_payload):
-        # deleting temp file from server
+        # deleting temp file from server if Resilient sent a file
         os.unlink(file_payload.get('path'))
+
+    # holds the exception raised in the future that is calling this function
+    # if one occurred
+    search_exception = future.exception()
+
+    if (search_exception):
+        # search raised exception, it is no longer searching / active
+        asyncio.create_task(search_exception_handler(search_id, db))
+        raise search_exception(str)
+    else:
+        # schedule a task to remove the search from the active search data table 
+        # and store the search results in the results table
+        asyncio.create_task(search_complete_handler_helper(search_id, artifact_type, artifact_value, db, future.result()))
 
 async def search_complete_handler_helper(search_id, artifact_type, artifact_value, db, hit):
     """
@@ -308,6 +318,17 @@ async def search_complete_handler_helper(search_id, artifact_type, artifact_valu
     else:
         await db.remove_active_search(search_id)
         raise InvalidSearcherReturn(f'the return from the searcher function needs to be an instance of "ArtifactHitDTO"')
+
+async def search_exception_handler(search_id, db):
+    """
+    Removes the given search from the active searches table. Gets called when
+    the searcher raises an exception.
+
+    :param string search_id the active search ID to be removed
+    :param 
+    """
+    #TODO: log?
+    await db.remove_active_search(search_id)
 
 def InvalidSearcherReturn(Exception):
     
