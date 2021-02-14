@@ -6,6 +6,7 @@ import uuid
 import json
 from aiohttp import web, MultipartReader
 from .util.db import DB
+from .dto import ArtifactHitDTO
 
 class AsyncCTS():
     """
@@ -16,6 +17,8 @@ class AsyncCTS():
         self.searcher = searcher
         self.config = configparser.ConfigParser()
         self.config.read(os.environ.get('ASYNC_CTS_CONFIG_PATH'))
+        #TODO: test connection to Async-CTS-Hub
+        #TODO: determine if any entries that are in the 'active_searches' table should be restarted
 
     async def getServer(self):
         """
@@ -131,6 +134,7 @@ class AsyncCTS():
         if (len(past_results) == 0 and len(active_searches) == 0):
             # no current searches or search results with the given type / value
             # launching a new search on the type / value
+            #TODO: need to catch exceptions and check/remove entry in active_searches
             resp = asyncio.create_task(
                     self.searcher(
                         artifact_payload.get('type'), 
@@ -277,7 +281,7 @@ def search_complete_handler(future, search_id, artifact_type, artifact_value, fi
     """
     # schedule a task to remove the search from the active search data table 
     # and store the search results in the results table
-    asyncio.create_task(search_complete_handler_helper(search_id, artifact_type, artifact_type, db, future.result()))
+    asyncio.create_task(search_complete_handler_helper(search_id, artifact_type, artifact_value, db, future.result()))
     
     if (file_payload):
         # deleting temp file from server
@@ -294,9 +298,18 @@ async def search_complete_handler_helper(search_id, artifact_type, artifact_valu
     :param string artifact_value: the value of the artifact
     :param DB db: object that has methods to interact with the database 
     :param HitDTO hit: the results of the search
+    :raises InvalidSearcherReturn when the searcher function doesn't return an
+    instance of ArtifactHitDTO
     """
     #TODO: need to make sure these are logged somewhere
-    
-    await db.store_search_results(search_id, artifact_type, artifact_value, json.dumps(hit))
+    if (type(hit) == ArtifactHitDTO):
+        await db.store_search_results(search_id, artifact_type, artifact_value, json.dumps(hit))
+        await db.remove_active_search(search_id)
+    else:
+        await db.remove_active_search(search_id)
+        raise InvalidSearcherReturn(f'the return from the searcher function needs to be an instance of "ArtifactHitDTO"')
 
-    await db.remove_active_search(search_id)
+def InvalidSearcherReturn(Exception):
+    
+    def __init__(self, message):
+        super().__init__(self, message)
