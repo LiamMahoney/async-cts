@@ -291,7 +291,7 @@ def search_complete_handler(future, search_id, artifact_type, artifact_value, fi
     if (search_exception):
         # search raised exception, it is no longer searching / active
         asyncio.create_task(search_exception_handler(search_id, db))
-        raise search_exception(str)
+        raise search_exception
     else:
         # schedule a task to remove the search from the active search data table 
         # and store the search results in the results table
