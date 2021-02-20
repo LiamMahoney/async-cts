@@ -22,7 +22,6 @@ def handle_db_connection(func):
             host=self.config['database']['host']
         )
         try:
-            #
             execution_results = await func(self, conn, *args, **kwargs)
         finally:
             await conn.close()
