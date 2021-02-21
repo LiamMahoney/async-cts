@@ -30,11 +30,12 @@ class AsyncCTS():
 
         :returns aiohttp.web_app.Application the webserver for the CTS to run
         """
+        #TODO: should log.info that the connection is being tested, then searchign for CTS tables, then if it needs to create them log that
         db = DB()
         # making sure the CTS can contact CTS Hub
         await db.test_connection()
         # checking if there is already a table created for this CTS in CTS Hub
-        if (not await db.cts_tables_exists()):
+        if (not await db.cts_tables_exist()):
             # tables for this cts don't exist, create them
             await db.create_cts_tables()
         
