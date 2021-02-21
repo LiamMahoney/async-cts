@@ -185,8 +185,46 @@ class DB():
             raise CTSHubConnectionError(f"failed to connect to CTS Hub running on server {self.config['database']['host']}. Please verify CTS Hub is running on the host and try again")
 
         return True
+    
+    @handle_db_connection
+    async def cts_tables_exist(self, conn):
+        """
+        Checks whether tables for the CTS already exist in CTS hub by searching
+        for tables that have the CTS ID specified in the CTS app.config in
+        their names.
+
+        :param asyncpg.connection.Connection conn: connection to the database
+        :returns Boolean whether or not the tables exist for the CTS
+        """
+        tables = await conn.fetch(f"""
+            SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name in ('{self.config['cts']['id']}_active_searches', '{self.config['cts']['id']}_results');
+        """)
+        # TODO: should this be moved out of this class?
+        if (len(tables) > 2):
+            raise MultipleTablesForCTS(f'Mutliple tables with the CTS ID {self.config["cts"]["id"]}: {tables}')
+        
+        # less than two tables with the CTS ID
+        return len(tables) == 2
+    
+    @handle_db_connection
+    async def create_cts_tables(self, conn):
+        """
+        Creates the tables that are needed for the CTS to function. Ideally
+        this should only be called the first time the CTS is ran.
+
+        :param asyncpg.connection.Connection conn: connection to the database
+        :returns None nothing is returned
+        """
+        await conn.execute(f"CREATE TABLE {self.config['cts']['id']}_active_searches (search_id SERIAL PRIMARY KEY, artifact_type VARCHAR, artifact_value VARCHAR);")
+
+        await conn.execute(f"CREATE TABLE {self.config['cts']['id']}_results (search_id SERIAL PRIMARY KEY, artifact_type VARCHAR, artifact_value VARCHAR, date_found timestamp, hit JSON);")
 
 class CTSHubConnectionError(Exception):
+
+    def __init__(self, message=None):
+        super().__init__(self, message)
+
+class MultipleTablesForCTS(Exception):
 
     def __init__(self, message=None):
         super().__init__(self, message)
