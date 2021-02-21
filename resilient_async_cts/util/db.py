@@ -163,3 +163,30 @@ class DB():
         """, artifact_type, artifact_value)
 
         return search_id
+    
+    async def test_connection(self):
+        """
+        Tests the connection to CTS Hub (the database for this CTS). If the
+        connection is unsuccessful the CTS should not run.
+
+        :returns Boolean True if the connection was successful
+        :raises CTSHubConnectionError if the CTS is unable to connect to CTS 
+        Hub
+        """
+        try:
+            conn = await asyncpg.connect(
+                user=self.config['database']['username'], 
+                password=self.config['database']['password'], 
+                database=self.config['database']['database'], 
+                host=self.config['database']['host']
+            )
+        except Exception as e:
+            #TODO: log e here
+            raise CTSHubConnectionError(f"failed to connect to CTS Hub running on server {self.config['database']['host']}. Please verify CTS Hub is running on the host and try again")
+
+        return True
+
+class CTSHubConnectionError(Exception):
+
+    def __init__(self, message=None):
+        super().__init__(self, message)
