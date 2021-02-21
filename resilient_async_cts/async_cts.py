@@ -19,13 +19,41 @@ class AsyncCTS():
         self.config.read(os.environ.get('ASYNC_CTS_CONFIG_PATH'))
         #TODO: test connection to Async-CTS-Hub
         #TODO: determine if any entries that are in the 'active_searches' table should be restarted
+    
+    async def initialize(self):
+        """
+        Runs everything that needs to happen in order for the CTS to run.
+        1. checks that a connection to CTS hub can be made
+        2. checks that a table for this CTS is created in CTS hub
+        2a. if a table is not made, it creates the tables required
+        3. initializes the webserver
+
+        :returns aiohttp.web_app.Application the webserver for the CTS to run
+        """
+        db = DB()
+        # making sure the CTS can contact CTS Hub
+        await db.test_connection()
+        # checking if there is already a table created for this CTS in CTS Hub
+        if (not await db.cts_tables_exists()):
+            # tables for this cts don't exist, create them
+            await db.create_cts_tables()
+        
+        #TODO: need to figure out what to do with any entries in ACTIVE_SEARCHES table, and whatever is decided to be done should be done here
+
+        # returning webserver that the CTS will run
+        return await self.getServer()
 
     async def getServer(self):
         """
-        TODO: docstring
+        Creates the webserver that the CTS runs so Resilient can connect to it.
+        Defines what actions should happen for each path that the server 
+        accepts.
+
+        :returns aiohttp.web_app.Application the webserver for the CTS to run
         """
         app = web.Application()
 
+        # paths / methods the webserver listens to
         app.add_routes([
             web.get('/{id}', self.retrieveArtifactResultHandler),
             web.post('/', self.scanArtifactHandler),
@@ -93,6 +121,7 @@ class AsyncCTS():
 
             else:
                 #TODO: either log here or catch where called
+                #TODO: replace with proper exception type
                 raise Exception(f"No active search or results for search {id}")
     
         return web.Response(text=f'Recieved retrieveArtifactResultHandler request with id {id}')
@@ -134,7 +163,6 @@ class AsyncCTS():
         if (len(past_results) == 0 and len(active_searches) == 0):
             # no current searches or search results with the given type / value
             # launching a new search on the type / value
-            #TODO: need to catch exceptions and check/remove entry in active_searches
             resp = asyncio.create_task(
                     self.searcher(
                         artifact_payload.get('type'), 
