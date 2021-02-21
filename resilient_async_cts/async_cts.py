@@ -7,6 +7,7 @@ import json
 from aiohttp import web, MultipartReader
 from .util.db import DB
 from .dto import ArtifactHitDTO
+from .util import log
 
 class AsyncCTS():
     """
@@ -30,17 +31,21 @@ class AsyncCTS():
 
         :returns aiohttp.web_app.Application the webserver for the CTS to run
         """
-        #TODO: should log.info that the connection is being tested, then searchign for CTS tables, then if it needs to create them log that
+        log.info(f'Starting initialization')
+
+        log.info(f'Testing connection to CTS Hub running on host {self.config["database"]["host"]}')
         db = DB()
-        # making sure the CTS can contact CTS Hub
         await db.test_connection()
-        # checking if there is already a table created for this CTS in CTS Hub
+        log.info('Successfully connected to CTS Hub')
+
+        log.info(f'Checking if tables for CTS {self.config["cts"]["id"]} are created in CTS Hub')
         if (not await db.cts_tables_exist()):
-            # tables for this cts don't exist, create them
+            log.info(f'Creating tables in CTS Hub for CTS {self.config["cts"]["id"]}')
             await db.create_cts_tables()
         
         #TODO: need to figure out what to do with any entries in ACTIVE_SEARCHES table, and whatever is decided to be done should be done here
 
+        log.info('Initialization complete')
         # returning webserver that the CTS will run
         return await self.getServer()
 
