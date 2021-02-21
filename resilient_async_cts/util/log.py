@@ -1,5 +1,7 @@
 import logging
 import configparser
+import os
+import sys
 
 def get_logger():
     config = configparser.ConfigParser()
@@ -8,6 +10,8 @@ def get_logger():
     log = logging.getLogger(__name__)
     log.setLevel(logging.INFO)
 
+    std_out_handler = logging.StreamHandler(sys.stdout)
+    log.addHandler(std_out_handler)
     #TODO: setup SMTP handler if enabled
 
     return log
