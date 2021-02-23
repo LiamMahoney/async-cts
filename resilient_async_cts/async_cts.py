@@ -149,9 +149,12 @@ class AsyncCTS():
             artifact_payload = await request.json()
 
         else:
-            # file artifact sent w/ file
-            artifact_payload, file_payload = await self.parse_multi_part_CTS_request(request)
-            
+            if (await self.file_uploads_supported()):
+                # file artifact sent w/ file
+                artifact_payload, file_payload = await self.parse_multi_part_CTS_request(request)
+            else:
+                #TODO: figure out if I need to return anything special to Resileint or if I should just log this as happening. I think teh options request should take care of this..
+                raise Exception("NOT IMPLEMENTED YET")
         db = DB()
 
         # searching for the type / value combination in both the active 
@@ -225,10 +228,9 @@ class AsyncCTS():
         :returns array index 0 describes the artifact, index 1 describes the
         file
         """
-
-        #TODO: check if file uploads are allowed in config before parsing the file
+        # CTS supports file uploads
         reader = await request.multipart()
-        
+    
         return await asyncio.gather(
             self.parse_multi_part_artifact(reader),
             self.parse_file(reader)
