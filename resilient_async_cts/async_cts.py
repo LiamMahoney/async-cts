@@ -319,7 +319,7 @@ def search_complete_handler(future, search_id, artifact_type, artifact_value, fi
 
     if (search_exception):
         # search raised exception, it is no longer searching / active
-        asyncio.create_task(search_exception_handler(search_id, db))
+        asyncio.create_task(search_exception_handler(search_id, artifact_type, artifact_value, db))
         raise search_exception
     else:
         # schedule a task to remove the search from the active search data table 
@@ -349,16 +349,23 @@ async def search_complete_handler_helper(search_id, artifact_type, artifact_valu
         # this should stop execution of the CTS
         raise InvalidSearcherReturn(f'the return from the searcher function needs to be an instance of "ArtifactHitDTO"')
 
-async def search_exception_handler(search_id, db):
+async def search_exception_handler(search_id, artifact_type, artifact_value, db):
     """
     Removes the given search from the active searches table. Gets called when
-    the searcher raises an exception.
+    the searcher raises an exception. Stores an empty hit in teh results table
+    to prevent an error when the retrieve artifact handler is called.
 
     :param string search_id the active search ID to be removed
-    :param 
+    :param string artifact_type: the type of the artifact
+    :param string artifact_value: the value of the artifact 
+    :param DB db: object that has methods to interact with the database    
     """
-    #TODO: what should be done in this scenario? next request will error if the search_id isn't in either the active_searches / results tables..
-    log.error(f'Exception raised during execution of the search function for search id {search_id}. Removing the search_id entry from the Active Searches table')
+    log.error(f'Exception raised during execution of the search function for search id {search_id}. Removing the search_id entry from the Active Searches table and inserting emtpy hit into the Results table')
+
+    # storing empty hit - this is terrible, need a way to signal to Resilient
+    # user that an error happened while  searching, they need to lookup themself
+    #FIXME: above
+    await db.store_search_results(search_id, artifact_type, artifact_value, json.dumps(ArtifactHitDTO([])))
     await db.remove_active_search(search_id)
 
 def InvalidSearcherReturn(Exception):
