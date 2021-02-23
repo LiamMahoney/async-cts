@@ -18,8 +18,6 @@ class AsyncCTS():
         self.searcher = searcher
         self.config = configparser.ConfigParser()
         self.config.read(os.environ.get('ASYNC_CTS_CONFIG_PATH'))
-        #TODO: test connection to Async-CTS-Hub
-        #TODO: determine if any entries that are in the 'active_searches' table should be restarted
     
     async def initialize(self):
         """
@@ -115,8 +113,7 @@ class AsyncCTS():
                         latest_time = row.get('date_found')
 
                 if (i > 0):
-                    # TODO: log this
-                    print(f"THERE WERE MUTLIPLE SEARCH RESULTS STORED WITH ID {id}")
+                    log.critical(f'Multiple search results stored with search_id {id}. This should never happen..')
 
                 return web.json_response(
                     {
@@ -126,9 +123,7 @@ class AsyncCTS():
                 )
 
             else:
-                #TODO: either log here or catch where called
-                #TODO: replace with proper exception type
-                raise Exception(f"No active search or results for search {id}")
+                log.critical(f"Didn't find an active search or search results wtih search ID {id}")
     
         return web.Response(text=f'Recieved retrieveArtifactResultHandler request with id {id}')
 
@@ -210,7 +205,7 @@ class AsyncCTS():
                 }
             )
 
-        #TODO: log & exception
+        #TODO:  return error to Resilient that will cause CTS to get shut off
         return web.Response(text=f"THIS SHOULD NEVER HAVE HAPPENED")
 
     async def queryCapabilitiesHandler(self, request):
@@ -351,6 +346,7 @@ async def search_complete_handler_helper(search_id, artifact_type, artifact_valu
         await db.remove_active_search(search_id)
     else:
         await db.remove_active_search(search_id)
+        # this should stop execution of the CTS
         raise InvalidSearcherReturn(f'the return from the searcher function needs to be an instance of "ArtifactHitDTO"')
 
 async def search_exception_handler(search_id, db):
@@ -361,7 +357,8 @@ async def search_exception_handler(search_id, db):
     :param string search_id the active search ID to be removed
     :param 
     """
-    #TODO: log?
+    #TODO: what should be done in this scenario? next request will error if the search_id isn't in either the active_searches / results tables..
+    log.error(f'Exception raised during execution of the search function for search id {search_id}. Removing the search_id entry from the Active Searches table')
     await db.remove_active_search(search_id)
 
 def InvalidSearcherReturn(Exception):
