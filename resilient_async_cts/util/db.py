@@ -33,8 +33,6 @@ class DB():
     Class that handles interacting with the data base to look for existing
     searches or results, add new searches or results and modify the data tables
     to keep their state in sync with what is needed for the application.
-
-    TODO: add methods for initial setup of database
     """
 
     def __init__(self):
@@ -181,8 +179,8 @@ class DB():
                 host=self.config['database']['host']
             )
         except Exception as e:
-            #TODO: log e here
-            raise CTSHubConnectionError(f"failed to connect to CTS Hub running on server {self.config['database']['host']}. Please verify CTS Hub is running on the host and try again")
+            # exception chaining with e
+            raise CTSHubConnectionError(f"failed to connect to CTS Hub running on server {self.config['database']['host']}. Please verify CTS Hub is running on the host and try again") from e
 
         return True
     
@@ -199,7 +197,6 @@ class DB():
         tables = await conn.fetch(f"""
             SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name in ('{self.config['cts']['id']}_active_searches', '{self.config['cts']['id']}_results');
         """)
-        # TODO: should this be moved out of this class?
         if (len(tables) > 2):
             raise MultipleTablesForCTS(f'Mutliple tables with the CTS ID {self.config["cts"]["id"]}: {tables}')
         
