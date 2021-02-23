@@ -340,8 +340,8 @@ async def search_complete_handler_helper(search_id, artifact_type, artifact_valu
     :raises InvalidSearcherReturn when the searcher function doesn't return an
     instance of ArtifactHitDTO
     """
-    #TODO: need to make sure these are logged somewhere
     if (type(hit) == ArtifactHitDTO):
+        log.info(f'Storing hit found in search id {search_id} for  {artifact_type} {artifact_value}')
         await db.store_search_results(search_id, artifact_type, artifact_value, json.dumps(hit))
         await db.remove_active_search(search_id)
     else:
