@@ -64,6 +64,8 @@ class AsyncCTS():
             web.options('/', self.queryCapabilitiesHandler)
         ])
 
+        #TODO: check for certificates in config & run https if there 
+
         return app
 
     async def retrieveArtifactResultHandler(self, request):
@@ -273,16 +275,18 @@ class AsyncCTS():
         file_part = await reader.next()
 
         # reading parts / chunks of file and writing to temp file
-        #TODO: size should probably be limited in config
         size = 0
         while True:
-            # reading raw binary data
-            chunk = await file_part.read_chunk()
-            if (not chunk):
-                break
-            size += len(chunk)
-            file_object.write(chunk)
-            file_object.flush()
+            if (size < self.config['cts'].getint('max_upload_size')):
+                # reading raw binary data
+                chunk = await file_part.read_chunk()
+                if (not chunk):
+                    break
+                size += len(chunk)
+                file_object.write(chunk)
+                file_object.flush()
+            else:
+                raise FileExceededMaxSize()
 
         #TODO: is Content-Transfer-Encoding header actually needed?
         file_payload = {
@@ -379,3 +383,8 @@ def InvalidSearcherReturn(Exception):
     
     def __init__(self, message):
         super().__init__(self, message)
+
+def FileExceededMaxSize(Exception):
+    
+    def __init__(self):
+        super().__init__(self, "File exceeded max upload size")
