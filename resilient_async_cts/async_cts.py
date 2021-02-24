@@ -213,10 +213,15 @@ class AsyncCTS():
 
     async def queryCapabilitiesHandler(self, request):
         """
-        TODO: docstring
+        Returns whether the CTS supports file uploads
         """
         supported = await self.file_uploads_supported()
-        return web.Response(text=f'Recieved queryCapabilitiesHandler request')
+        # returning ThreatServiceOptionsDTO
+        return web.json_response(
+            {
+                'upload_file': supported
+            }
+        )
 
     async def parse_multi_part_CTS_request(self, request):
         """
