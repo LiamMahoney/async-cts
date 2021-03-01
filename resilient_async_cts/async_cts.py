@@ -156,8 +156,8 @@ class AsyncCTS():
                 # file artifact sent w/ file
                 artifact_payload, file_payload = await self.parse_multi_part_CTS_request(request)
             else:
-                #TODO: figure out if I need to return anything special to Resileint or if I should just log this as happening. I think teh options request should take care of this..
-                raise Exception("NOT IMPLEMENTED YET")
+                log.critical(f'Recieved a file but files are unsupported by this CTS.')
+                raise web.HTTPUnsupportedMediaType()
         db = DB()
 
         # searching for the type / value combination in both the active 
