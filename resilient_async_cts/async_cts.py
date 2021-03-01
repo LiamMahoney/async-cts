@@ -211,8 +211,8 @@ class AsyncCTS():
                 }
             )
 
-        #TODO:  return error to Resilient that will cause CTS to get shut off
-        return web.Response(text=f"THIS SHOULD NEVER HAVE HAPPENED")
+        log.critical(f"Unexpected state. Either an existing hit or a new search should've prevented this from executing. Artifact type: {artifact_payload.get('type')}, artifact value: {artifact_payload.get('value')}")
+        raise web.HTTPInternalServerError()
 
     async def queryCapabilitiesHandler(self, request):
         """
