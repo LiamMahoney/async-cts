@@ -126,8 +126,9 @@ class AsyncCTS():
 
             else:
                 log.critical(f"Didn't find an active search or search results wtih search ID {id}")
-    
-        return web.Response(text=f'Recieved retrieveArtifactResultHandler request with id {id}')
+        
+        log.critical(f"Unexpected state. Unable to find search id {id} in either active or results table")
+        raise web.HTTPInternalServerError()
 
     async def scanArtifactHandler(self, request):
         """
