@@ -35,6 +35,8 @@ class AsyncCTS():
 
         try:
             mongo = Mongo()
+            # deletes results after TTL so stale data isn't used
+            await mongo.add_ttl_to_results_collection()
         except Exception as e:
             log.critical(f'Error connectiong to CTS Hub. Please make sure CTS Hub is running and the connection information is correct.')
             raise e

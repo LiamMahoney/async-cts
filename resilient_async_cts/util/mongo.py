@@ -6,7 +6,8 @@ from bson.objectid import ObjectId
 
 class Mongo():
     """
-    TODO:
+    Contains all of the needed interactions with MongoDB for Resilient Async 
+    CTS.
     """
 
     def __init__(self):
@@ -21,6 +22,15 @@ class Mongo():
         self.active_searches_collection_name = f'{self.config["cts"].get("id")}_active_searches'
         self.results_collection_name = f'{self.config["cts"].get("id")}_results'
         #TODO: need to add TTL on results collection - https://motor.readthedocs.io/en/stable/api-tornado/motor_collection.html#motor.motor_tornado.MotorCollection.create_index
+
+    async def add_ttl_to_results_collection(self):
+        """
+        Adds a TTL (time to live) index on the results colleciton. Documents 
+        will be removed from the collection after the amount of seconds 
+        specified. Prevents stale hit data from being sent back to Resilient.
+        The TTL number of seconds should be specified in the app's config.
+        """
+        await self.db[self.results_collection_name].create_index('date', expireAfterSeconds=self.config['cts'].getint('hit_ttl'))
 
     async def add_active_search(self, artifact_type, artifact_value):
         """
@@ -157,7 +167,8 @@ class Mongo():
             'search_id': search_id,
             'artifact_type': artifact_type,
             'artifact_value': artifact_value,
-            'hit': hit
+            'hit': hit,
+            'date': datetime.datetime.now()
         }
 
         result = await self.db[self.results_collection_name].insert_one(document)
