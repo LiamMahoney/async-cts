@@ -21,7 +21,6 @@ class Mongo():
 
         self.active_searches_collection_name = f'{self.config["cts"].get("id")}_active_searches'
         self.results_collection_name = f'{self.config["cts"].get("id")}_results'
-        #TODO: need to add TTL on results collection - https://motor.readthedocs.io/en/stable/api-tornado/motor_collection.html#motor.motor_tornado.MotorCollection.create_index
 
     async def add_ttl_to_results_collection(self):
         """
