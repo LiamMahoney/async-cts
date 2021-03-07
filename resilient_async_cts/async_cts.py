@@ -97,15 +97,13 @@ class AsyncCTS():
             # no entry for ID in active searches, search must be done
             results = await mongo.search_for_results(search_id=id)
 
-            return web.json_response(
-                {
-                    'id': id,
-                    'hits': json.loads(results.get('hit'))
-                }
-            )
-
-            if (results == None):
-                log.critical(f"Didn't find an active search or search results wtih search ID {id}")
+            if (results):
+                return web.json_response(
+                    {
+                        'id': id,
+                        'hits': json.loads(results.get('hit'))
+                    }
+                )
         
         log.critical(f"Unexpected state. Unable to find search id {id} in either active or results table")
         raise web.HTTPInternalServerError()
