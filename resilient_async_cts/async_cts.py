@@ -140,12 +140,12 @@ class AsyncCTS():
 
         # searching for the type / value combination in both the active 
         # searches and search results dbs
-        past_results, active_searche = await asyncio.gather(
+        past_results, active_search = await asyncio.gather(
             mongo.search_for_results(artifact_type=artifact_payload.get('type'), artifact_value=artifact_payload.get('value')),
             mongo.search_for_active_search(artifact_type=artifact_payload.get('type'), artifact_value=artifact_payload.get('value'))
         )
 
-        if (past_results == None and active_searche == None):
+        if (past_results == None and active_search == None):
             # no current searches or search results with the given type / value
             # launching a new search on the type / value
             resp = asyncio.create_task(
@@ -170,12 +170,12 @@ class AsyncCTS():
                 }
             )
 
-        elif (active_searche):
+        elif (active_search):
             # active search running for the given type / value combo, return
             # that search's ID
             return web.json_response(
                 {
-                    'id': active_searche[0].get('search_id'),
+                    'id': active_search.get('search_id'),
                     'retry_secs': self.config['cts']['retry_secs']
                 }
             )
