@@ -175,7 +175,7 @@ class AsyncCTS():
             # that search's ID
             return web.json_response(
                 {
-                    'id': active_search.get('search_id'),
+                    'id': str(active_search.get('_id')),
                     'retry_secs': self.config['cts']['retry_secs']
                 }
             )
