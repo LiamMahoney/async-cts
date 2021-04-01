@@ -1,17 +1,8 @@
 import logging, logging.handlers
-import configparser
 import os
 import sys
 import json
-from . import config
-
-def parse_tuple(input):
-    """
-    Parses the config value into a tuple.
-    :param string input: value from config
-    :returns tuple
-    """
-    return tuple(k.strip().replace("'", "").replace("\"", "") for k in input[1:-1].split(','))
+from .config import config
 
 def create_smtp_handler():
     """

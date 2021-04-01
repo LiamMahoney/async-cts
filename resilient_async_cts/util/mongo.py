@@ -1,8 +1,8 @@
 import motor.motor_asyncio
-import configparser
 import os
 import datetime
 from bson.objectid import ObjectId
+from .config import config
 
 class Mongo():
     """
@@ -11,16 +11,13 @@ class Mongo():
     """
 
     def __init__(self):
-        self.config = configparser.ConfigParser()
-        self.config.read(os.environ.get('ASYNC_CTS_CONFIG_PATH'))
-
         #TODO: require mongo authentication
-        client = motor.motor_asyncio.AsyncIOMotorClient(f"mongodb://{self.config['database'].get('host')}:{self.config['database'].get('port')}")
+        client = motor.motor_asyncio.AsyncIOMotorClient(f"mongodb://{config['database'].get('host')}:{config['database'].get('port')}")
 
-        self.db = client[f'{self.config["cts"].get("id")}']
+        self.db = client[f'{config["cts"].get("id")}']
 
-        self.active_searches_collection_name = f'{self.config["cts"].get("id")}_active_searches'
-        self.results_collection_name = f'{self.config["cts"].get("id")}_results'
+        self.active_searches_collection_name = f'{config["cts"].get("id")}_active_searches'
+        self.results_collection_name = f'{config["cts"].get("id")}_results'
 
     async def add_ttl_to_results_collection(self):
         """
@@ -29,7 +26,7 @@ class Mongo():
         specified. Prevents stale hit data from being sent back to Resilient.
         The TTL number of seconds should be specified in the app's config.
         """
-        await self.db[self.results_collection_name].create_index('date', expireAfterSeconds=self.config['cts'].getint('hit_ttl'))
+        await self.db[self.results_collection_name].create_index('date', expireAfterSeconds=config['cts'].getint('hit_ttl'))
 
     async def add_active_search(self, artifact_type, artifact_value):
         """

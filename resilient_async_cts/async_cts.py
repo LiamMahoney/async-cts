@@ -1,13 +1,13 @@
 import asyncio
 import tempfile
 import os
-import configparser
 import uuid
 import json
 from aiohttp import web, MultipartReader
 from .util import Mongo
 from .dto import ArtifactHitDTO
 from .util import log
+from .util import config
 
 class AsyncCTS():
     """
@@ -16,8 +16,6 @@ class AsyncCTS():
     
     def __init__(self, searcher):
         self.searcher = searcher
-        self.config = configparser.ConfigParser()
-        self.config.read(os.environ.get('ASYNC_CTS_CONFIG_PATH'))
     
     async def initialize(self):
         """
@@ -31,7 +29,7 @@ class AsyncCTS():
         """
         log.info(f'Starting initialization')
 
-        log.info(f'Testing connection to CTS Hub running on host {self.config["database"]["host"]}')
+        log.info(f'Testing connection to CTS Hub running on host {config["database"]["host"]}')
 
         try:
             mongo = Mongo()
@@ -90,7 +88,7 @@ class AsyncCTS():
             return web.json_response(
                 {
                     'id': id,
-                    'retry_secs': self.config['cts']['retry_secs']
+                    'retry_secs': config['cts']['retry_secs']
                 }
             )
         else:
@@ -136,6 +134,7 @@ class AsyncCTS():
             else:
                 log.critical(f'Recieved a file but files are unsupported by this CTS.')
                 raise web.HTTPUnsupportedMediaType()
+
         mongo = Mongo()
 
         # searching for the type / value combination in both the active 
@@ -166,7 +165,7 @@ class AsyncCTS():
             return web.json_response(
                 {
                     'id': search_id,
-                    'retry_secs': self.config['cts']['retry_secs']
+                    'retry_secs': config['cts']['retry_secs']
                 }
             )
 
@@ -176,7 +175,7 @@ class AsyncCTS():
             return web.json_response(
                 {
                     'id': str(active_search.get('_id')),
-                    'retry_secs': self.config['cts']['retry_secs']
+                    'retry_secs': config['cts']['retry_secs']
                 }
             )
 
@@ -256,7 +255,7 @@ class AsyncCTS():
         # reading parts / chunks of file and writing to temp file
         size = 0
         while True:
-            if (size < self.config['cts'].getint('max_upload_size')):
+            if (size < config['cts'].getint('max_upload_size')):
                 # reading raw binary data
                 chunk = await file_part.read_chunk()
                 if (not chunk):
@@ -282,7 +281,7 @@ class AsyncCTS():
         :returns boolean True if file uploads are suppored, False if they are
         not
         """
-        return self.config['cts'].getboolean('upload_files')
+        return config['cts'].getboolean('upload_files')
 
 def search_complete_handler(future, search_id, artifact_type, artifact_value, file_payload, mongo):
     """
@@ -352,9 +351,8 @@ async def search_exception_handler(search_id, artifact_type, artifact_value, mon
     """
     log.error(f'Exception raised during execution of the search function for search id {search_id}. Removing the search_id entry from the Active Searches table and inserting emtpy hit into the Results table')
 
-    # storing empty hit - this is terrible, need a way to signal to Resilient
-    # user that an error happened while  searching, they need to lookup themself
-    #FIXME: above
+    # not satisfied with storing an empty hit (implied not malicious) when an
+    # error has occurred, but seems like the best bet at the moment
     await mongo.store_search_results(search_id, artifact_type, artifact_value, json.dumps(ArtifactHitDTO([])))
     await mongo.remove_active_search(search_id)
 
