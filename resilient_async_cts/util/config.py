@@ -7,7 +7,7 @@ def parse_tuple(input):
     :param string input: value from config
     :returns tuple
     """
-    return tuple(k.strip() for k in input[1:-1].split(','))
+    return tuple(x.strip().replace("'", "").replace("\"", "") for x in input[1:-1].split(','))
 
 config = configparser.ConfigParser(converters={'tuple': parse_tuple})
 config.read(os.environ.get('ASYNC_CTS_CONFIG_PATH'))
