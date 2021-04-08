@@ -41,7 +41,13 @@ class AsyncCTS():
 
         log.info('Successfully connected to CTS Hub')
         
-        #TODO: need to figure out what to do with any entries in ACTIVE_SEARCHES table, and whatever is decided to be done should be done here
+        # MotorCursor object
+        active_search_cursor = await mongo.find_all_active_searches()
+
+        async for search in active_search_cursor:
+            # removing all of the active searches
+            log.info(f'Removing search {str(search.get("_id"))} for {search.get("artifact_type")} {search.get("artifact_value")} from the active_searches table')
+            await mongo.remove_active_search(str(search.get('_id')))
 
         log.info('Initialization complete')
         # returning webserver that the CTS will run
@@ -78,6 +84,7 @@ class AsyncCTS():
         :returns web response that contains a ResponseDTO
         """
         id = request.match_info.get('id')
+        log.info(f'GET {id}')
 
         mongo = Mongo()
 
@@ -134,6 +141,8 @@ class AsyncCTS():
             else:
                 log.critical(f'Recieved a file but files are unsupported by this CTS.')
                 raise web.HTTPUnsupportedMediaType()
+
+        log.info(f'POST type: {artifact_payload.get("type")} value: {artifact_payload.get("value")}')
 
         mongo = Mongo()
 

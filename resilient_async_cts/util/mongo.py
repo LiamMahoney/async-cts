@@ -89,6 +89,16 @@ class Mongo():
 
         return document
 
+    async def find_all_active_searches(self):
+        """
+        Searches for any entries in the active_searches table.
+
+        :returns MotorCursor that can be iterated over to get every document in
+        the active_searches collection
+        """
+        # all documents in active_searches collection
+        return self.db[self.active_searches_collection_name].find()
+
     async def remove_active_search(self, search_id):
         """
         Removes an entry from the active search collection. Should be called
