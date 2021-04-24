@@ -5,18 +5,19 @@ import uuid
 import json
 from aiohttp import web, MultipartReader
 from .util import Mongo
-from .dto import ArtifactHitDTO
+from .dto import ArtifactHitDTO, ResponseDTO
 from .util import log
 from .util import config
 
-class AsyncCTS():
+class CustomThreatService():
     """
-    TODO: docstring
+    A class used to build Custom Threat Services for IBM Security SOAR. An 
+    instance of this class must be passed a 'searcher' functoin that implements
+    the 'search' of the CTS. The search can be looking up the artifact in an,
+    API, querying for more information about th eartifact in a database or 
+    file, or whatever is needed to be done to enrich an artifact.
     """
-    
-    def __init__(self, searcher):
-        self.searcher = searcher
-    
+
     async def initialize(self):
         """
         Runs everything that needs to happen in order for the CTS to run.
@@ -70,8 +71,6 @@ class AsyncCTS():
             web.options('/', self.queryCapabilitiesHandler)
         ])
 
-        #TODO: check for certificates in config & run https if there 
-
         return app
 
     async def retrieveArtifactResultHandler(self, request):
@@ -93,10 +92,7 @@ class AsyncCTS():
         if (await mongo.search_for_active_search(search_id=id) != None):
             # entry for ID in active searches, search is still running
             return web.json_response(
-                {
-                    'id': id,
-                    'retry_secs': config['cts']['retry_secs']
-                }
+                ResponseDTO(id, retry_secs=config['cts']['retry_secs'])
             )
         else:
             # no entry for ID in active searches, search must be done
@@ -104,10 +100,7 @@ class AsyncCTS():
 
             if (results):
                 return web.json_response(
-                    {
-                        'id': id,
-                        'hits': json.loads(results.get('hit'))
-                    }
+                    ResponseDTO(id, hits=json.loads(results.get('hit')))
                 )
         
         log.critical(f"Unexpected state. Unable to find search id {id} in either active or results table")
@@ -154,47 +147,26 @@ class AsyncCTS():
         )
 
         if (past_results == None and active_search == None):
+            log.info(f"Submitting a new search for artifact {artifact_payload.get('type')} {artifact_payload.get('value')}")
             # no current searches or search results with the given type / value
             # launching a new search on the type / value
-            resp = asyncio.create_task(
-                    self.searcher(
-                        artifact_payload.get('type'), 
-                        artifact_payload.get('value'),
-                        file_payload=file_payload if file_payload else None
-                    )
-                )
+            response = await self.launch_new_search(mongo, artifact_payload, file_payload)
 
-            # adding an entry to the active searches db
-            search_id = await mongo.add_active_search(artifact_payload.get('type'), artifact_payload.get('value'))
-
-            # when the search is done store it in the results table & remove 
-            # the entry in the active searches table
-            resp.add_done_callback(lambda future: search_complete_handler(future, search_id, artifact_payload.get("type"), artifact_payload.get("value"), file_payload, mongo))
-
-            return web.json_response(
-                {
-                    'id': search_id,
-                    'retry_secs': config['cts']['retry_secs']
-                }
-            )
+            return web.json_response(response)
 
         elif (active_search):
+            log.info(f"Found an active saerch for artifact {artifact_payload.get('type')} {artifact_payload.get('value')}")
             # active search running for the given type / value combo, return
             # that search's ID
             return web.json_response(
-                {
-                    'id': str(active_search.get('_id')),
-                    'retry_secs': config['cts']['retry_secs']
-                }
+                ResponseDTO(id, retry_secs=config['cts']['retry_secs'])
             )
 
         elif(past_results):
+            log.info(f"Found a past result for artifact {artifact_payload.get('type')} {artifact_payload.get('value')}")
             # returning hit that was stored in db
             return web.json_response(
-                {
-                    'id': past_results.get('search_id'),
-                    'hits': json.loads(past_results.get('hit'))
-                }
+                ResponseDTO(id, hits=json.loads(past_results.get('hit')))
             )
 
         log.critical(f"Unexpected state. Either an existing hit or a new search should've prevented this from executing. Artifact type: {artifact_payload.get('type')}, artifact value: {artifact_payload.get('value')}")
@@ -292,78 +264,111 @@ class AsyncCTS():
         """
         return config['cts'].getboolean('upload_files')
 
-def search_complete_handler(future, search_id, artifact_type, artifact_value, file_payload, mongo):
-    """
-    Removes the search ID from the active searches DB and adds the results to
-    the search results DB. If a file_payload is passed in then the temporary 
-    file is removed from the server.
+    async def searcher(self):
+        """
+        This method should be overwritten.
+        """
+        raise Exception("THIS METHOD NEEDS TO BE OVERWRITTEN")
 
-    :param future future: the results of the search (future object)
-    :param string search_id: the active search ID to be removed
-    :param string artifact_type: the type of the artifact
-    :param string artifact_value: the value of the artifact
-    :param dict file_payload: contains information about the file if one was
-    sent from Resilient
-    :param Mongo mongo: object that has methods to interact with the database
-    """
+    async def launch_new_search(self, mongo, artifact_payload, file_payload=None):
+        """
+        Launches a new search on the artifact.
 
-    if (file_payload):
-        # deleting temp file from server if Resilient sent a file
-        os.unlink(file_payload.get('path'))
+        :param dict artifact_payload: contains artifact type and value
+        :param dict file_paylaod: contains the file path
+        :param Mongo mongo: object that has methods to interact with the database
 
-    # holds the exception raised in the future that is calling this function
-    # if one occurred
-    search_exception = future.exception()
+        :returns ResponseDTO that describes the search that was started
+        """
+        resp = asyncio.create_task(
+            self.searcher(
+                artifact_payload.get('type'), 
+                artifact_payload.get('value'),
+                file_payload=file_payload if file_payload else None
+            )
+        )
 
-    if (search_exception):
-        # search raised exception, it is no longer searching / active
-        asyncio.create_task(search_exception_handler(search_id, artifact_type, artifact_value, mongo))
-        raise search_exception
-    else:
-        # schedule a task to remove the search from the active search data table 
-        # and store the search results in the results table
-        asyncio.create_task(search_complete_handler_helper(search_id, artifact_type, artifact_value, mongo, future.result()))
+        # adding an entry to the active searches db
+        search_id = await mongo.add_active_search(artifact_payload.get('type'), artifact_payload.get('value'))
 
-async def search_complete_handler_helper(search_id, artifact_type, artifact_value, mongo, hit):
-    """
-    Stores the search results and of the search and then removes the search 
-    from the active_searches table. Need to store the results first before
-    removing the active search to eliminate a potential race case.
+        # when the search is done store it in the results table & remove 
+        # the entry in the active searches table
+        resp.add_done_callback(lambda future: self.search_complete_handler(future, search_id, artifact_payload.get("type"), artifact_payload.get("value"), file_payload, mongo))
 
-    :param string search_id: the active search ID to be removed
-    :param string artifact_type: the type of the artifact
-    :param string artifact_value: the value of the artifact
-    :param Mongo mongo: object that has methods to interact with the database 
-    :param HitDTO hit: the results of the search
-    :raises InvalidSearcherReturn when the searcher function doesn't return an
-    instance of ArtifactHitDTO
-    """
-    if (type(hit) == ArtifactHitDTO):
-        log.info(f'Storing hit found in search id {search_id} for  {artifact_type} {artifact_value}')
-        await mongo.store_search_results(search_id, artifact_type, artifact_value, json.dumps(hit))
+        return ResponseDTO(search_id, retry_secs=config['cts']['retry_secs'])
+
+    def search_complete_handler(self, future, search_id, artifact_type, artifact_value, file_payload, mongo):
+        """
+        Removes the search ID from the active searches DB and adds the results to
+        the search results DB. If a file_payload is passed in then the temporary 
+        file is removed from the server.
+
+        :param future future: the results of the search (future object)
+        :param string search_id: the active search ID to be removed
+        :param string artifact_type: the type of the artifact
+        :param string artifact_value: the value of the artifact
+        :param dict file_payload: contains information about the file if one was
+        sent from Resilient
+        :param Mongo mongo: object that has methods to interact with the database
+        """
+
+        if (file_payload):
+            # deleting temp file from server if Resilient sent a file
+            os.unlink(file_payload.get('path'))
+
+        # holds the exception raised in the future that is calling this function
+        # if one occurred
+        search_exception = future.exception()
+
+        if (search_exception):
+            # search raised exception, it is no longer searching / active
+            asyncio.create_task(self.search_exception_handler(search_id, artifact_type, artifact_value, mongo))
+            raise search_exception
+        else:
+            # schedule a task to remove the search from the active search data table 
+            # and store the search results in the results table
+            asyncio.create_task(self.search_complete_handler_helper(search_id, artifact_type, artifact_value, mongo, future.result()))
+
+    async def search_complete_handler_helper(self, search_id, artifact_type, artifact_value, mongo, hit):
+        """
+        Stores the search results and of the search and then removes the search 
+        from the active_searches table. Need to store the results first before
+        removing the active search to eliminate a potential race case.
+
+        :param string search_id: the active search ID to be removed
+        :param string artifact_type: the type of the artifact
+        :param string artifact_value: the value of the artifact
+        :param Mongo mongo: object that has methods to interact with the database 
+        :param HitDTO hit: the results of the search
+        :raises InvalidSearcherReturn when the searcher function doesn't return an
+        instance of ArtifactHitDTO
+        """
+        if (type(hit) == ArtifactHitDTO):
+            log.info(f'Storing hit found in search id {search_id} for  {artifact_type} {artifact_value}')
+            await mongo.store_search_results(search_id, artifact_type, artifact_value, json.dumps(hit))
+            await mongo.remove_active_search(search_id)
+        else:
+            await mongo.remove_active_search(search_id)
+            # this should stop execution of the CTS
+            raise InvalidSearcherReturn(f'the return from the searcher function needs to be an instance of "ArtifactHitDTO"')
+
+    async def search_exception_handler(self, search_id, artifact_type, artifact_value, mongo):
+        """
+        Removes the given search from the active searches table. Gets called when
+        the searcher raises an exception. Stores an empty hit in teh results table
+        to prevent an error when the retrieve artifact handler is called.
+
+        :param string search_id the active search ID to be removed
+        :param string artifact_type: the type of the artifact
+        :param string artifact_value: the value of the artifact 
+        :param Mongo mongo: object that has methods to interact with the database    
+        """
+        log.error(f'Exception raised during execution of the search function for search id {search_id}. Removing the search_id entry from the Active Searches table and inserting emtpy hit into the Results table')
+
+        # not satisfied with storing an empty hit (implied not malicious) when an
+        # error has occurred, but seems like the best bet at the moment
+        await mongo.store_search_results(search_id, artifact_type, artifact_value, json.dumps(ArtifactHitDTO([])))
         await mongo.remove_active_search(search_id)
-    else:
-        await mongo.remove_active_search(search_id)
-        # this should stop execution of the CTS
-        raise InvalidSearcherReturn(f'the return from the searcher function needs to be an instance of "ArtifactHitDTO"')
-
-async def search_exception_handler(search_id, artifact_type, artifact_value, mongo):
-    """
-    Removes the given search from the active searches table. Gets called when
-    the searcher raises an exception. Stores an empty hit in teh results table
-    to prevent an error when the retrieve artifact handler is called.
-
-    :param string search_id the active search ID to be removed
-    :param string artifact_type: the type of the artifact
-    :param string artifact_value: the value of the artifact 
-    :param Mongo mongo: object that has methods to interact with the database    
-    """
-    log.error(f'Exception raised during execution of the search function for search id {search_id}. Removing the search_id entry from the Active Searches table and inserting emtpy hit into the Results table')
-
-    # not satisfied with storing an empty hit (implied not malicious) when an
-    # error has occurred, but seems like the best bet at the moment
-    await mongo.store_search_results(search_id, artifact_type, artifact_value, json.dumps(ArtifactHitDTO([])))
-    await mongo.remove_active_search(search_id)
 
 def InvalidSearcherReturn(Exception):
     

@@ -1,1 +1,1 @@
-from .async_cts import AsyncCTS
+from .custom_threat_service import CustomThreatService
