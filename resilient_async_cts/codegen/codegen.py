@@ -26,7 +26,7 @@ def codegen(name, output):
         # making the top level dir
         cts_dir = make_cts_directory(name, output)
 
-        populate_dir(cts_dir, os.path.join(os.path.dirname(__file__), "template"), name=name)
+        populate_dir(cts_dir, os.path.join(os.path.dirname(__file__), "template"), name=name, title_name=name.title())
     except Exception as e:
         print('Failed to generate boilerplate code. Cleaning up any partially built directories.')
         if (cts_dir) and os.path.exists(cts_dir):
