@@ -14,8 +14,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    #TODO: verify
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     entry_points={
         'console_scripts': ['resilient_async_cts=resilient_async_cts.codegen.codegen:main']
     }
