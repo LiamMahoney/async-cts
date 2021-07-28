@@ -1,0 +1,6 @@
+from aiohttp import web
+from cts.cts import {{ title_name }}_CTS
+
+if (__name__ == "__main__"):
+    cts = {{ title_name }}_CTS().initialize()
+    web.run_app(cts)

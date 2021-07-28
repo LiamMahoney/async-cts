@@ -1,4 +1,4 @@
-import argparse, os, shutil
+import argparse, os, shutil, traceback
 from jinja2 import Template
 
 def main():
@@ -29,6 +29,8 @@ def codegen(name, output):
         populate_dir(cts_dir, os.path.join(os.path.dirname(__file__), "template"), name=name, title_name=name.title())
     except Exception as e:
         print('Failed to generate boilerplate code. Cleaning up any partially built directories.')
+        print(traceback.format_exc())
+        
         if (cts_dir) and os.path.exists(cts_dir):
             # cleaning up partially built dir
             shutil.rmtree(cts_dir)
@@ -82,11 +84,12 @@ def populate_dir(cts_dir, template_dir, **kwargs):
 
         elif (os.path.isdir(os.path.join(template_dir, template_obj))):
             os.mkdir(os.path.join(cts_dir, template_obj))
+
             # recurisve call for next level of template dir
             populate_dir(os.path.join(cts_dir, template_obj), os.path.join(template_dir, template_obj), **kwargs) 
 
         else:
-            raise Exception('Unkown object in template directory.')
+            raise Exception('Unkown object (not a file or directory) in template directory.')
 
 def make_file(template_file_path, template_file_name, cts_path, **kwargs):
     """

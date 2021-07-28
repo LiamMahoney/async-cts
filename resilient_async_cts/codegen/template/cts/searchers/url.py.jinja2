@@ -1,0 +1,54 @@
+from resilient_async_cts.dto import ArtifactHitDTO, ArtifactPropertyDTO
+# you can use this logger if desired, standard python logger
+from resilient_async_cts.util import log
+# you can read values from the config here, e.g. API keys 
+from resilient_async_cts.util import config
+# if you need to make HTTP requests make sure to make them Asynchronously - I use aiohttp
+# import aiohttp
+import asyncio
+
+async def url_searcher(url):
+    """
+    Looks up information about a URL.
+
+    :param string url: the URL to lookup
+    :returns ArtifactHitDTO describing the results of the lookup
+    """
+    await asyncio.sleep(3)
+    
+    results = {'score': 86} #TODO: perform real data lookup here
+
+    if (is_url_malicious(results)):
+        return generate_url_hit(results)
+    
+    return ArtifactHitDTO([])
+
+def generate_url_hit(url_data):
+    """
+    Generates a hit from the lookup response.
+
+    :param list|dict url_data: data returned from the lookup
+    """
+    artifact_property_dtos = []
+
+    # an example of what this could contain
+    if (url_data.get('score')):
+        artifact_property_dtos.append(ArtifactPropertyDTO('number', 'Malicious Score', url_data.get('score')))
+
+    return ArtifactHitDTO(artifact_property_dtos)
+
+def is_url_malicious(url_data):
+    """
+    Determines whether the data retunred from the lookup indicates whether the
+    artifact is malicious or not.
+
+    It may make sense to implement this per artifact type being looked up. In
+    other scenarios (if the data returned from the lookup is similarly formed
+    for multiple artifact types) it may make sense to make one 'is_hit_malicious'
+    function for all supported artifact types.
+    """
+    # an example of how this could be implemented
+    if (url_data.get('score') > 0):
+        return True
+
+    return False

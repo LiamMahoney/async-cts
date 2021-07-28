@@ -1,0 +1,41 @@
+[cts]
+# the name of the cts, should not contain spaces (e.g. virus_total or joe_sandbox)
+id = {{ name }}
+
+#whether or not files can be sent to the CTS
+upload_files = True
+# max upload in bytes
+max_upload_size = 25000000
+
+# number of seconds for Resilient to wait between requests
+retry_secs = 30
+# number of seconds results from a search should be stored
+hit_ttl = 300
+
+
+[email_exception_handler]
+# whether to send emails for log events of a certain level
+smtp_log_enabled = False
+smtp_log_level = CRITICAL
+
+# see python SMTPHandler documentation for more information about the following values
+smtp_log_mailhost = ('mailserver', 'port')
+smtp_log_fromaddr = {{ name }}_cts@{{ name }}_cts.com
+smtp_log_to_addrs = ['email@gmail.com']
+smtp_log_subject = '{{ name }} CTS Error
+
+# not required but may be required for some environments
+smtp_log_credentials = ('user','pass')
+smtp_log_secure = ('/path/to/cert.cer')
+
+
+[database]
+# connection information for a MongoDB database
+username = username
+password = password
+host = 127.0.0.1
+port = 27017
+
+
+[{{ name }}]
+# TODO: put any configuration data needed here, e.g. API tokens, API urls, etc.

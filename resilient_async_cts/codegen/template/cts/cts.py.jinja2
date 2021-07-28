@@ -1,0 +1,22 @@
+from resilient_async_cts import CustomThreatService
+from .searchers.url import url_searcher
+
+class {{ title_name }}_CTS(CustomThreatService):
+
+    async def searcher(self, artifact_type, artifact_value, file_payload=None):
+        """
+        This function is called when resilient sends a request to the CTS and 
+        there isn't a hit stored for the artifact. This file must have a function
+        named searcher that returns an ArtifactHitDTO, other than that the 
+        implementation is up to you.
+
+        :param string artifact_type: the type of the artifact sent from Resilient
+        :param string artifact_value: the value of the artifact sent from Resilient
+        :param dict/None file_payload: a dict describing the uploaded file:
+        {'path': '/tmp/tempfilename', 'Content-Transfer-Encoding': '...'}
+        :returns ArtifactHitDTO object containing hit properties if there are any
+        """
+        
+        # TODO: check for each type of artifact the CTS should support
+        if (artifact_type == 'net.uri'):
+            return await url_searcher(artifact_value)
