@@ -9,6 +9,9 @@ setuptools.setup(
     long_description="A library for creating and running an asyncrhonous Custom Threat Service that enriches artifacts for the IBM Resilient SOAR platform.",
     url="https://github.com/LiamMahoney/resilient_async_cts",
     packages=setuptools.find_packages(),
+    install_requires=[
+        "motor"
+    ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

@@ -8,7 +8,11 @@ setuptools.setup(
     description="A custom threat service (CTS) for use with IBM SOAR",
     long_description="A custom threat service (CTS) for use with IBM SOAR",
     url="",
+    license="",
     packages=setuptools.find_packages(),
+    install_requires=[
+        "aiohttp"
+    ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
