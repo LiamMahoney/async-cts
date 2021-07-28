@@ -14,9 +14,9 @@ class ArtifactPropertyDTO(dict):
     A single property of an ArtifactHitDTO. ArtifactPropertyDTOs describe the
     type, name and value of the property.
 
-    :param string type: the type of the property 
+    :param string type: the type of the property string|number|uri|ip|lat_lang
     :param string name: the name of the property
-    :param string | int | dict value: the value of the property
+    :param string|int|dict value: the value of the property
     """
 
     def __init__(self, type, name, value):
