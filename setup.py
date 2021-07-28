@@ -10,7 +10,9 @@ setuptools.setup(
     url="https://github.com/LiamMahoney/resilient_async_cts",
     packages=setuptools.find_packages(),
     install_requires=[
-        "motor"
+        "motor",
+        "jinja2",
+        "aiohttp"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
