@@ -30,7 +30,7 @@ class CustomThreatService():
         """
         log.info(f'Starting initialization')
 
-        log.info(f'Testing connection to CTS Hub running on host {config["database"]["host"]}')
+        log.info(f'Testing connection to MongoDB running on host {config["database"]["host"]}')
 
         try:
             mongo = Mongo()
@@ -370,12 +370,12 @@ class CustomThreatService():
         await mongo.store_search_results(search_id, artifact_type, artifact_value, json.dumps(ArtifactHitDTO([])))
         await mongo.remove_active_search(search_id)
 
-def InvalidSearcherReturn(Exception):
+class InvalidSearcherReturn(Exception):
     
     def __init__(self, message):
         super().__init__(self, message)
 
-def FileExceededMaxSize(Exception):
+class FileExceededMaxSize(Exception):
     
     def __init__(self):
         super().__init__(self, "File exceeded max upload size")
