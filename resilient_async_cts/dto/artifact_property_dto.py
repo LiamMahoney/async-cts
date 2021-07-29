@@ -1,3 +1,4 @@
+from ..exceptions import BaseAsyncCTSError
 
 SUPPORTED_TYPES = [
     'string',
@@ -74,17 +75,17 @@ class ArtifactPropertyDTO(dict):
         
         super().__setitem__(key, value)
 
-class InvalidPropertyKey(Exception):
+class InvalidPropertyKey(BaseAsyncCTSError):
 
     def __init__(self, key):
         super().__init__(self, f"{key} is not a valid key for a ArtifactPropertyDTO. Valid keys are {VALID_KEYS}")    
 
-class PropertyTypeNotSupported(Exception):
+class PropertyTypeNotSupported(BaseAsyncCTSError):
 
     def __init__(self):
         super().__init__(self, f"Property type must be one of {SUPPORTED_TYPES}")
 
-class ValueTypeMismatch(Exception):
+class ValueTypeMismatch(BaseAsyncCTSError):
 
     def __init__(self, prop_type, value):
         super().__init__(self, f"the property type {prop_type} and value {value} (type {type(value)}) do not match")

@@ -1,14 +1,14 @@
 import asyncio
 import tempfile
 import os
-import uuid
 import json
+import traceback
 from aiohttp import web, MultipartReader
 from .util import Mongo
 from .dto import ArtifactHitDTO, ResponseDTO
 from .util import log
 from .util import config
-from .exceptions import UnsupportedArtifactType, InvalidSearcherReturn, FileExceededMaxSize
+from .exceptions import UnsupportedArtifactType, InvalidSearcherReturn, FileExceededMaxSize, BaseAsyncCTSError
 
 class CustomThreatService():
     """
@@ -327,8 +327,16 @@ class CustomThreatService():
             asyncio.create_task(mongo.remove_active_search(search_id))
             
             if (not isinstance(search_exception, UnsupportedArtifactType)):
-                # unexpected exception - want details about it
-                log.critical(f'Exception raised during execution of the search function for search id {search_id} on {artifact_type} {artifact_value}. Removing the search_id entry from the Active Searches table. {search_exception}')
+                # exception that should get logged - if the exception type is
+                # defined by the library, the exception message is enough
+                message = f'Exception raised during execution of the search function for search id {search_id} on {artifact_type} {artifact_value}. Removing the search_id entry from the Active Searches table. {search_exception}'
+                
+                if (not isinstance(search_exception, BaseAsyncCTSError)):
+                    # exception that isn't defined by the library, want a full
+                    # stack trace
+                    message = message + f'\n{"".join(traceback.format_tb(search_exception.__traceback__))}'
+                
+                log.critical(message)
 
         else:
             # schedule a task to remove the search from the active search data table 

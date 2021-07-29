@@ -1,4 +1,5 @@
 from .artifact_property_dto import ArtifactPropertyDTO
+from ..exceptions import BaseAsyncCTSError
 
 class ArtifactHitDTO(list):
     """
@@ -65,12 +66,12 @@ class ArtifactHitDTO(list):
         self.check_new_property(new_prop)
         super(ArtifactHitDTO, self).append(new_prop)
         
-class InvalidPropertyType(Exception):
+class InvalidPropertyType(BaseAsyncCTSError):
 
     def __init__(self):
-        Exception.__init__(self, "Properties must be an instance of ArtifactHitDTO")
+        super().__init__(self, "Properties must be an instance of ArtifactHitDTO")
 
-class DuplicatePropertyName(Exception):
+class DuplicatePropertyName(BaseAsyncCTSError):
 
     def __init__(self, message):
-        Exception.__init__(self, message)
+        super().__init__(self, message)

@@ -3,6 +3,7 @@ import os
 import datetime
 from bson.objectid import ObjectId
 from .config import config
+from ..exceptions import BaseAsyncCTSError
 
 class Mongo():
     """
@@ -184,17 +185,17 @@ class Mongo():
         else:
             raise InsertException(f'failed to insert a document into the results collection.\nartifact type: {artifact_type}\nartifact value: {artifact_value}\nhit: {hit}')
 
-class InsertException(Exception):
+class InsertException(BaseAsyncCTSError):
 
     def __init__(self, message):
         super().__init__(self, message)
 
-class DeletedMultipleActiveSearches(Exception):
+class DeletedMultipleActiveSearches(BaseAsyncCTSError):
 
     def __init__(self, search_id):
         super().__init__(self, f'search_id: {search_id}')
 
-class ActiveSearchNotFound(Exception):
+class ActiveSearchNotFound(BaseAsyncCTSError):
 
     def __init__(self, search_id=None, artifact_type=None, artifact_value=None):
         message = ""
