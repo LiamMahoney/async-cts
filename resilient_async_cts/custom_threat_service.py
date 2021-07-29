@@ -8,6 +8,7 @@ from .util import Mongo
 from .dto import ArtifactHitDTO, ResponseDTO
 from .util import log
 from .util import config
+from .exceptions import UnsupportedArtifactType, InvalidSearcherReturn, FileExceededMaxSize
 
 class CustomThreatService():
     """
@@ -103,8 +104,8 @@ class CustomThreatService():
                     ResponseDTO(id, hits=json.loads(results.get('hit')))
                 )
         
-        log.critical(f"Unexpected state. Unable to find search id {id} in either active or results table")
-        raise web.HTTPInternalServerError()
+        log.info(f"Unable to find search id {id} in either active or results table")
+        raise web.HTTPNotFound()
 
     async def scanArtifactHandler(self, request):
         """
@@ -321,9 +322,13 @@ class CustomThreatService():
         search_exception = future.exception()
 
         if (search_exception):
-            # search raised exception, it is no longer searching / active
-            asyncio.create_task(self.search_exception_handler(search_id, artifact_type, artifact_value, mongo))
-            raise search_exception
+            # search raised exception, it is no longer searching / active  
+            # don't want Resilient to think the search is still happening
+            asyncio.create_task(mongo.remove_active_search(search_id))
+            
+            if (not isinstance(search_exception, UnsupportedArtifactType)):
+                # unexpected exception - want details about it
+                log.critical(f'Exception raised during execution of the search function for search id {search_id} on {artifact_type} {artifact_value}. Removing the search_id entry from the Active Searches table.')
         else:
             # schedule a task to remove the search from the active search data table 
             # and store the search results in the results table
@@ -351,31 +356,3 @@ class CustomThreatService():
             await mongo.remove_active_search(search_id)
             # this should stop execution of the CTS
             raise InvalidSearcherReturn(f'the return from the searcher function needs to be an instance of "ArtifactHitDTO"')
-
-    async def search_exception_handler(self, search_id, artifact_type, artifact_value, mongo):
-        """
-        Removes the given search from the active searches table. Gets called when
-        the searcher raises an exception. Stores an empty hit in teh results table
-        to prevent an error when the retrieve artifact handler is called.
-
-        :param string search_id the active search ID to be removed
-        :param string artifact_type: the type of the artifact
-        :param string artifact_value: the value of the artifact 
-        :param Mongo mongo: object that has methods to interact with the database    
-        """
-        log.error(f'Exception raised during execution of the search function for search id {search_id}. Removing the search_id entry from the Active Searches table and inserting emtpy hit into the Results table')
-
-        # not satisfied with storing an empty hit (implied not malicious) when an
-        # error has occurred, but seems like the best bet at the moment
-        await mongo.store_search_results(search_id, artifact_type, artifact_value, json.dumps(ArtifactHitDTO([])))
-        await mongo.remove_active_search(search_id)
-
-class InvalidSearcherReturn(Exception):
-    
-    def __init__(self, message):
-        super().__init__(self, message)
-
-class FileExceededMaxSize(Exception):
-    
-    def __init__(self):
-        super().__init__(self, "File exceeded max upload size")
