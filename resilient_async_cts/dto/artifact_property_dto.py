@@ -52,15 +52,15 @@ class ArtifactPropertyDTO(dict):
         value do not match
         """
         if (prop_type == 'string' and type(value) != str):
-            raise ValueTypeMismatch(type, value)
+            raise ValueTypeMismatch(prop_type, value)
         elif (prop_type == 'number' and type(value) != int):
-            raise ValueTypeMismatch(type, value)
+            raise ValueTypeMismatch(prop_type, value)
         elif (prop_type == 'uri' and type(value) != str):
-            raise ValueTypeMismatch(type, value)
+            raise ValueTypeMismatch(prop_type, value)
         elif (prop_type == 'ip' and type(value) != str):
-            raise ValueTypeMismatch(type, value)
+            raise ValueTypeMismatch(prop_type, value)
         elif (prop_type == 'lat_lng' and type(value) != dict):
-            raise ValueTypeMismatch(type, value)
+            raise ValueTypeMismatch(prop_type, value)
     
     def __setitem__(self, key, value):
         """
@@ -86,5 +86,5 @@ class PropertyTypeNotSupported(Exception):
 
 class ValueTypeMismatch(Exception):
 
-    def __init__(self, type, value):
-        super().__init__(self, f"the type {type} and value {value} do not match")
+    def __init__(self, prop_type, value):
+        super().__init__(self, f"the property type {prop_type} and value {value} (type {type(value)}) do not match")

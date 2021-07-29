@@ -328,7 +328,8 @@ class CustomThreatService():
             
             if (not isinstance(search_exception, UnsupportedArtifactType)):
                 # unexpected exception - want details about it
-                log.critical(f'Exception raised during execution of the search function for search id {search_id} on {artifact_type} {artifact_value}. Removing the search_id entry from the Active Searches table.')
+                log.critical(f'Exception raised during execution of the search function for search id {search_id} on {artifact_type} {artifact_value}. Removing the search_id entry from the Active Searches table. {search_exception}')
+
         else:
             # schedule a task to remove the search from the active search data table 
             # and store the search results in the results table
