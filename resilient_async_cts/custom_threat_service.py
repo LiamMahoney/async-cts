@@ -22,8 +22,8 @@ class CustomThreatService():
     async def initialize(self):
         """
         Runs everything that needs to happen in order for the CTS to run.
-        1. checks that a connection to CTS hub can be made
-        2. checks that a table for this CTS is created in CTS hub
+        1. checks that a connection to Mongo can be made
+        2. checks that a table for this CTS is created in Mongo
         2a. if a table is not made, it creates the tables required
         3. initializes the webserver
 
@@ -38,10 +38,10 @@ class CustomThreatService():
             # deletes results after TTL so stale data isn't used
             await mongo.add_ttl_to_results_collection()
         except Exception as e:
-            log.critical(f'Error connectiong to CTS Hub. Please make sure CTS Hub is running and the connection information is correct.')
+            log.critical(f'Error connecting to the Mongo DB. Please make sure it is running and the connection information is correct.')
             raise e
 
-        log.info('Successfully connected to CTS Hub')
+        log.info('Successfully connected to Mongo DB.')
         
         # MotorCursor object
         active_search_cursor = await mongo.find_all_active_searches()
