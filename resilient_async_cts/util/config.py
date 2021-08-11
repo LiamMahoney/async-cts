@@ -1,5 +1,4 @@
-import configparser
-import os
+import configparser, os, sys
 
 def parse_tuple(input):
     """
@@ -10,4 +9,4 @@ def parse_tuple(input):
     return tuple(x.strip().replace("'", "").replace("\"", "") for x in input[1:-1].split(','))
 
 config = configparser.ConfigParser(converters={'tuple': parse_tuple})
-config.read(os.environ.get('ASYNC_CTS_CONFIG_PATH'))
+config.read(os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), 'app.config'))
