@@ -63,21 +63,22 @@ This will create a directory with the following structure:
 
 ```
 name_of_cts
---| name_of_cts
-    --| lib
-        --| searcher.py
-    --| app.config
-    --| app.py
-    --| Dockerfile
-    --| README.md
-    --| setup.py
+--| app.config
+--| app.py
+--| cts
+--|--| cts.py
+--|--| searchers
+--|--|--| url.py
+--| Dockerfile
+--| README.md
+--| setup.py
 ```
 
-The only files you need to edit are `searcher.py`, `app.config` and potentially `README.md`.
-
-
+A file should be created in the `searchers` directory for each type of artifact the CTS supports. Each of these files will carry out a 'search' for a type of artifact. Each of these files will need to be imported in the `cts.py` file, and the if statement(s) will need to be adjusted to allow for the artifact type to be supported.
 
 ### Develop Searcher Code
+
+
 
 ## How to Deploy
 
