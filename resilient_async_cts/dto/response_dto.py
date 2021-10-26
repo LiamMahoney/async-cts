@@ -13,7 +13,9 @@ class ResponseDTO(dict):
         if (not id):
             raise ValueError("Missing required value id")
 
-        if (not retry_secs and not hits):
+        # have to check for None instead of falsy values, empty hits are empty
+        # lists
+        if (retry_secs == None and hits == None):
             raise ValueError("Must supply either retry_secs or hits")
 
         response = {
