@@ -27,7 +27,9 @@ class Mongo():
         specified. Prevents stale hit data from being sent back to Resilient.
         The TTL number of seconds should be specified in the app's config.
         """
-        await self.db[self.results_collection_name].create_index('date', expireAfterSeconds=config['cts'].getint('hit_ttl'))
+        await self.db[self.results_collection_name].drop_indexes()
+        resp = await self.db[self.results_collection_name].create_index('date', expireAfterSeconds=config['cts'].getint('hit_ttl'))
+        print("done")
 
     async def add_active_search(self, artifact_type, artifact_value):
         """
