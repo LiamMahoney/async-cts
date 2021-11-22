@@ -1,6 +1,6 @@
 import motor.motor_asyncio
 import os
-import datetime
+from datetime import datetime, timezone
 from bson.objectid import ObjectId
 from .config import config
 from ..exceptions import BaseAsyncCTSError
@@ -176,7 +176,7 @@ class Mongo():
             'artifact_type': artifact_type,
             'artifact_value': artifact_value,
             'hit': hit,
-            'date': datetime.datetime.now()
+            'date': datetime.now(timezone.utc).astimezone()
         }
 
         result = await self.db[self.results_collection_name].insert_one(document)
