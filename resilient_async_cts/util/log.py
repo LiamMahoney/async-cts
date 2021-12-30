@@ -57,6 +57,9 @@ def get_logger():
 
     std_out_handler = logging.StreamHandler(sys.stdout)
     log.addHandler(std_out_handler)
+
+    formatter = logging.Formatter("%(asctime)s %(levelname)s: %(message)s", "%m-%d-%Y %H:%M:%S%z")
+    std_out_handler.setFormatter(formatter)
     
     if (config['email_exception_handler'].getboolean('smtp_log_enabled')):
         smtp_handler = create_smtp_handler()
