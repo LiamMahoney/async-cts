@@ -44,7 +44,7 @@ def validate_smtp_handler_config():
         missing_fields.append('smtp_log_subject')
 
     if (missing_fields):
-        raise valueError(f"Missing required app.config values(s) to use the SMTP log handler: {', '.join(missing_fields)}")
+        raise ValueError(f"Missing required app.config values(s) to use the SMTP log handler: {', '.join(missing_fields)}")
 
 def get_logger():
     """
