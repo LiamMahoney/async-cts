@@ -5,7 +5,7 @@ SUPPORTED_TYPES = [
     'number',
     'uri',
     'ip',
-    'lat_lang'
+    'lat_lng'
 ]
 
 VALID_KEYS = ['type', 'name', 'value']
